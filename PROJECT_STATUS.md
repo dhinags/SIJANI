@@ -96,6 +96,8 @@ Fresh verification:
 
 See [VERCEL_PREVIEW.md](VERCEL_PREVIEW.md) for exact deployment, environment-variable, browser-entry, troubleshooting, and safe-transfer instructions. A hosted preview still requires the user's Vercel project and a separate managed PostgreSQL database. The GitHub API returned `Forbidden` from this environment; the prepared comparison/PR instructions are provided as a fallback. No Vercel deployment or real-account administration was performed.
 
+Both `main` and `codex/sijani-phase4-preview` were pushed successfully to `dhinags/SIJANI`; application commit `ee76ec5` contains all 146 source/configuration/documentation files. Creating the PR record with `gh pr create` failed with `Post "https://api.github.com/graphql": Forbidden`. No PR number or URL is claimed. Open https://github.com/dhinags/SIJANI/compare/main...codex/sijani-phase4-preview?expand=1 to submit the prepared review. The PR description is retained at `/workspace/SIJANI-pull-request.md`.
+
 ## Handoff and environment
 
 The existing Node/PostgreSQL setup remains applicable: `npm run setup` installs locked dependencies, applies additive migrations, and seeds missing records. No new dependency, secret, network destination, or startup command was required. The stopped local database was restarted through the existing helper; production startup and local functional checks were exercised. Previously saved cloud setup/startup instructions remain applicable. Draft saving, environment publication, and a fresh-task restore are separate; no new publication or fresh-task restoration is claimed.
