@@ -1,0 +1,5 @@
+import Link from "@/components/safe-link";
+import { domainInventory } from "@/lib/knowledge";
+import { KnowledgeTabs } from "@/components/knowledge-common";
+import { PageHeading } from "@/components/common";
+export default async function Domains() {const domains=await domainInventory();return <><PageHeading eyebrow="ATLAS PSIKOLOGI" title="Dua belas pintu eksplorasi" description="Domain adalah titik masuk. Satu gagasan dapat menjadi bagian dari lebih dari satu ranah psikologi."/><KnowledgeTabs active="/encyclopedia/domain"/><div className="domain-explorer-grid">{domains.map(d=>{const entries=d.knowledge.filter(k=>k.entity.kind!=="DOMAIN");return <Link key={d.slug} href={`/encyclopedia/domain/${d.slug}`}><strong>{d.name}</strong><span>{d.description}</span><small>{entries.filter(k=>k.entity.kind==="THEORY").length} teori · {entries.filter(k=>k.entity.kind==="CONCEPT").length} konsep · {entries.filter(k=>k.entity.status==="PUBLISHED").length} terbit</small><span className="status-badge">{entries.length?"Koleksi tersedia; periksa status tiap materi":"Materi direncanakan"}</span></Link>;})}</div></>}

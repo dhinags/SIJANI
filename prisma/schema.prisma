@@ -1,0 +1,514 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  STUDENT
+  DOSEN
+  EDITOR
+  REVIEWER
+}
+
+model User {
+  id                String              @id @default(cuid())
+  role              Role                @default(STUDENT)
+  isDemo            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  profile           Profile?
+  sessions          Session[]
+  attempts          SimulationAttempt[]
+  progress          LearningProgress[]
+  assessments       RubricAssessment[]
+  knowledgeProgress KnowledgeProgress[]
+  knowledgeEdits    KnowledgeRevision[]
+  knowledgeReviews  KnowledgeReview[]
+  sourceReviews     SourceReview[]
+  writtenSubmissions WrittenSubmission[]
+  formativeReviews FormativeReview[]
+  reviewGrantsGiven CaseReviewGrant[] @relation("GrantedReviewer")
+  reviewGrantsReceived CaseReviewGrant[] @relation("GrantedStudent")
+  labAudits LabAudit[]
+  referenceProgress ReferenceProgress[]
+}
+
+model Profile {
+  userId         String  @id
+  displayName    String  @default("Pelajar demo")
+  onboardingDone Boolean @default(false)
+  preference     String  @default("bertahap")
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  tokenHash String   @id
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int      @default(1)
+  resetAt DateTime
+}
+
+model LearningDomain {
+  slug        String                @id
+  name        String
+  description String
+  color       String
+  articles    Article[]
+  knowledge   KnowledgeMembership[]
+}
+
+model Article {
+  slug       String                @id
+  title      String
+  summary    String
+  domainSlug String
+  minutes    Int
+  status     String                @default("DRAFT")
+  body       Json
+  domain     LearningDomain        @relation(fields: [domainSlug], references: [slug])
+  citations  SourceCitation[]
+  progress   LearningProgress[]
+  outgoing   ConceptRelationship[] @relation("FromConcept")
+  incoming   ConceptRelationship[] @relation("ToConcept")
+}
+
+model ConceptRelationship {
+  id        String  @id
+  fromSlug  String
+  toSlug    String
+  label     String
+  rationale String
+  from      Article @relation("FromConcept", fields: [fromSlug], references: [slug])
+  to        Article @relation("ToConcept", fields: [toSlug], references: [slug])
+
+  @@unique([fromSlug, toSlug])
+}
+
+model AcademicSource {
+  id                 String              @id
+  title              String
+  author             String
+  year               String
+  version            String
+  jurisdiction       String
+  kind               String
+  url                String
+  status             String              @default("PENDING")
+  note               String
+  citations          SourceCitation[]
+  publication        String              @default("")
+  publisher          String              @default("")
+  edition            String              @default("")
+  doi                String?             @unique
+  isbn               String?             @unique
+  fingerprint        String?             @unique
+  verifiedAt         DateTime?
+  knowledgeCitations KnowledgeCitation[]
+  knowledgeRelations KnowledgeRelation[]
+  reviews            SourceReview[]
+  sections ReferenceSection[]
+  caseReferences CaseReference[]
+}
+
+model SourceCitation {
+  id          String         @id
+  articleSlug String
+  sourceId    String
+  locator     String
+  article     Article        @relation(fields: [articleSlug], references: [slug], onDelete: Cascade)
+  source      AcademicSource @relation(fields: [sourceId], references: [id])
+
+  @@unique([articleSlug, sourceId])
+}
+
+model LearningBlock {
+  slug        String         @id
+  title       String
+  description String
+  status      String
+  objectives  Json
+  cases       CaseScenario[]
+}
+
+model CaseScenario {
+  slug        String               @id
+  blockSlug   String
+  title       String
+  description String
+  narrative   String
+  version     Int                  @default(1)
+  sources     Json
+  block       LearningBlock        @relation(fields: [blockSlug], references: [slug])
+  questions   SimulationQuestion[]
+  attempts    SimulationAttempt[]
+  category String @default("Etika profesional")
+  difficulty String @default("Terbimbing")
+  estimatedMinutes Int?
+  status String @default("DRAFT")
+  isDemoSeed Boolean @default(false)
+  versions CaseVersion[]
+  references CaseReference[]
+  reviewGrants CaseReviewGrant[]
+}
+
+model SimulationQuestion {
+  id         String       @id
+  caseSlug   String
+  position   Int
+  definition Json
+  scenario   CaseScenario @relation(fields: [caseSlug], references: [slug])
+
+  @@unique([caseSlug, position])
+}
+
+model SimulationAttempt {
+  id          String       @id @default(cuid())
+  userId      String
+  caseSlug    String
+  caseVersion Int
+  snapshot    Json
+  answers     Json         @default("{}")
+  revision    Int          @default(0)
+  status      String       @default("DRAFT")
+  score       Int?
+  feedback    Json?
+  caseSnapshot Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  submittedAt DateTime?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario    CaseScenario @relation(fields: [caseSlug], references: [slug])
+
+  @@index([userId, caseSlug, status])
+}
+
+model CaseVersion {
+  caseSlug String
+  number Int
+  content Json
+  instructorGuide String
+  createdAt DateTime @default(now())
+  scenario CaseScenario @relation(fields:[caseSlug],references:[slug],onDelete:Restrict)
+  submissions WrittenSubmission[]
+  @@id([caseSlug,number])
+}
+
+model RubricVersion {
+  id String @id
+  title String
+  definition Json
+  provisional Boolean @default(true)
+  createdAt DateTime @default(now())
+  submissions WrittenSubmission[]
+}
+
+model WrittenSubmission {
+  id String @id @default(cuid())
+  userId String
+  caseSlug String
+  caseVersion Int
+  rubricVersionId String
+  rubricSnapshot Json
+  answers Json @default("{}")
+  status String @default("DRAFT")
+  revision Int @default(0)
+  parentId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  submittedAt DateTime?
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  feedbackReadAt DateTime?
+  scenarioVersion CaseVersion @relation(fields:[caseSlug,caseVersion],references:[caseSlug,number],onDelete:Restrict)
+  rubricVersion RubricVersion @relation(fields:[rubricVersionId],references:[id],onDelete:Restrict)
+  parent WrittenSubmission? @relation("AnalysisRevision",fields:[parentId],references:[id],onDelete:SetNull)
+  revisions WrittenSubmission[] @relation("AnalysisRevision")
+  saves WrittenRevision[]
+  reviews FormativeReview[]
+  audits LabAudit[]
+  @@index([userId,caseSlug,createdAt])
+  @@index([status,submittedAt])
+}
+
+model WrittenRevision {
+  id String @id @default(cuid())
+  submissionId String
+  number Int
+  answers Json
+  action String
+  createdAt DateTime @default(now())
+  submission WrittenSubmission @relation(fields:[submissionId],references:[id],onDelete:Cascade)
+  @@unique([submissionId,number])
+}
+
+model FormativeReview {
+  id String @id @default(cuid())
+  submissionId String
+  reviewerId String
+  method String
+  number Int
+  revision Int @default(0)
+  status String @default("DRAFT")
+  ratings Json @default("[]")
+  summary String @default("")
+  strengths String @default("")
+  improvements String @default("")
+  nextSteps String @default("")
+  outcome String @default("REVIEWED")
+  score Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  finalizedAt DateTime?
+  amendsId String? @unique
+  submission WrittenSubmission @relation(fields:[submissionId],references:[id],onDelete:Cascade)
+  reviewer User @relation(fields:[reviewerId],references:[id],onDelete:Restrict)
+  @@unique([submissionId,reviewerId,number])
+  @@index([submissionId,status])
+}
+
+model CaseReviewGrant {
+  id String @id @default(cuid())
+  reviewerId String
+  studentId String
+  caseSlug String
+  grantedByLabel String
+  expiresAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  reviewer User @relation("GrantedReviewer",fields:[reviewerId],references:[id],onDelete:Cascade)
+  student User @relation("GrantedStudent",fields:[studentId],references:[id],onDelete:Cascade)
+  scenario CaseScenario @relation(fields:[caseSlug],references:[slug],onDelete:Restrict)
+  @@unique([reviewerId,studentId,caseSlug])
+}
+
+model LabAudit {
+  id String @id @default(cuid())
+  submissionId String
+  actorId String
+  action String
+  detail String
+  createdAt DateTime @default(now())
+  submission WrittenSubmission @relation(fields:[submissionId],references:[id],onDelete:Cascade)
+  actor User @relation(fields:[actorId],references:[id],onDelete:Restrict)
+}
+
+model ReferenceSection {
+  id String @id
+  sourceId String
+  title String
+  position Int
+  body String
+  locator String @default("")
+  verified Boolean @default(false)
+  kind String @default("ORIENTATION")
+  source AcademicSource @relation(fields:[sourceId],references:[id],onDelete:Restrict)
+  progress ReferenceProgress[]
+  @@unique([sourceId,position])
+}
+
+model CaseReference {
+  caseSlug String
+  sourceId String
+  note String
+  dimensionIds String[]
+  scenario CaseScenario @relation(fields:[caseSlug],references:[slug],onDelete:Restrict)
+  source AcademicSource @relation(fields:[sourceId],references:[id],onDelete:Restrict)
+  @@id([caseSlug,sourceId])
+}
+
+model ReferenceProgress {
+  userId String
+  sectionId String
+  completedAt DateTime @default(now())
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  section ReferenceSection @relation(fields:[sectionId],references:[id],onDelete:Restrict)
+  @@id([userId,sectionId])
+}
+
+model LearningProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  articleSlug String
+  completedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article     Article  @relation(fields: [articleSlug], references: [slug])
+
+  @@unique([userId, articleSlug])
+}
+
+model RubricAssessment {
+  id        String   @id @default(cuid())
+  userId    String
+  caseSlug  String
+  entries   Json
+  score     Int
+  method    String   @default("SELF_REVIEW")
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, caseSlug])
+}
+
+enum KnowledgeKind {
+  DOMAIN
+  APPROACH
+  THEORY
+  CONCEPT
+  THEORIST
+}
+
+enum EditorialStatus {
+  PLANNED
+  DRAFT
+  UNDER_REVIEW
+  VERIFIED
+  PUBLISHED
+}
+
+enum RelationshipKind {
+  BELONGS_TO_DOMAIN
+  DEVELOPED_BY
+  ASSOCIATED_WITH
+  BUILDS_ON
+  RELATED_TO
+  CONTRASTS_WITH
+  APPLIED_IN
+}
+
+model KnowledgeEntity {
+  id           String                @id
+  slug         String                @unique
+  kind         KnowledgeKind
+  title        String
+  summary      String
+  keywords     String                @default("")
+  content      Json                  @default("{}")
+  status       EditorialStatus       @default(DRAFT)
+  isDemoSeed   Boolean               @default(false)
+  revision     Int                   @default(1)
+  authorLabel  String
+  lastEditorId String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  verifiedAt   DateTime?
+  publishedAt  DateTime?
+  domains      KnowledgeMembership[]
+  outgoing     KnowledgeRelation[]   @relation("KnowledgeFrom")
+  incoming     KnowledgeRelation[]   @relation("KnowledgeTo")
+  citations    KnowledgeCitation[]
+  revisions    KnowledgeRevision[]
+  reviews      KnowledgeReview[]
+  progress     KnowledgeProgress[]
+
+  @@index([kind, status, title])
+  @@index([status, isDemoSeed])
+}
+
+model KnowledgeMembership {
+  entityId   String
+  domainSlug String
+  entity     KnowledgeEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  domain     LearningDomain  @relation(fields: [domainSlug], references: [slug], onDelete: Restrict)
+
+  @@id([entityId, domainSlug])
+  @@index([domainSlug])
+}
+
+model KnowledgeRelation {
+  isDemoSeed  Boolean          @default(false)
+  id          String           @id
+  fromId      String
+  toId        String
+  type        RelationshipKind
+  explanation String
+  sourceId    String?
+  locator     String           @default("")
+  status      EditorialStatus  @default(DRAFT)
+  verifiedAt  DateTime?
+  reviewerId  String?
+  from        KnowledgeEntity  @relation("KnowledgeFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to          KnowledgeEntity  @relation("KnowledgeTo", fields: [toId], references: [id], onDelete: Cascade)
+  source      AcademicSource?  @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@unique([fromId, toId, type])
+  @@index([status, isDemoSeed])
+  @@index([toId])
+}
+
+model KnowledgeCitation {
+  id       String          @id @default(cuid())
+  entityId String
+  sourceId String
+  section  String
+  locator  String
+  verified Boolean         @default(false)
+  entity   KnowledgeEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  source   AcademicSource  @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@unique([entityId, sourceId, section])
+}
+
+model KnowledgeRevision {
+  id        String          @id @default(cuid())
+  entityId  String
+  number    Int
+  snapshot  Json
+  editorId  String?
+  createdAt DateTime        @default(now())
+  entity    KnowledgeEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  editor    User?           @relation(fields: [editorId], references: [id], onDelete: SetNull)
+
+  @@unique([entityId, number])
+}
+
+model KnowledgeReview {
+  id         String          @id @default(cuid())
+  entityId   String
+  revision   Int
+  action     String
+  note       String
+  reviewerId String?
+  createdAt  DateTime        @default(now())
+  entity     KnowledgeEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  reviewer   User?           @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([entityId, createdAt])
+}
+
+model SourceReview {
+  id         String         @id @default(cuid())
+  sourceId   String
+  reviewerId String?
+  note       String
+  createdAt  DateTime       @default(now())
+  source     AcademicSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  reviewer   User?          @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+}
+
+model KnowledgeProgress {
+  userId        String
+  entityId      String
+  viewedAt      DateTime?
+  bookmarkedAt  DateTime?
+  reviewedAt    DateTime?
+  completedAt   DateTime?
+  practicedAt   DateTime?
+  checkRevision Int?
+  checkCorrect  Boolean?
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity        KnowledgeEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@id([userId, entityId])
+  @@index([userId, viewedAt])
+  @@index([userId, bookmarkedAt])
+}

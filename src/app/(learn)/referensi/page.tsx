@@ -1,0 +1,13 @@
+import Link from "@/components/safe-link";
+import { visibleKnowledge } from "@/lib/knowledge";
+import { currentUser } from "@/lib/auth";
+import { knowledgeHref } from "@/lib/knowledge-model";
+import { SourceReference } from "@/components/knowledge-common";
+import { ArrowUpRight, Library } from "lucide-react";
+import { db } from "@/lib/db";
+import { PageHeading } from "@/components/common";
+export default async function References() {
+  const user=await currentUser();
+  const sources = await db.academicSource.findMany({ orderBy: { id: "asc" }, take: 100, include: { knowledgeCitations: { where: {entity: visibleKnowledge(user?.role)}, include: {entity:true} } } });
+  return <><PageHeading eyebrow="TRANSPARAN TENTANG SUMBER" title="Pengetahuan perlu pijakan." description="Telusuri rujukan awal, konteks yurisdiksi, dan status peninjauan setiap sumber." /><div className="notice"><Library size={21} /><p><strong>Registri sumber awal, bukan klaim verifikasi.</strong> Status metadata dan pemetaan bagian dicatat terpisah. Sumber yang menunggu verifikasi belum dapat mendukung publikasi. Tautan mengarah ke penerbit atau portal resmi yang perlu diperiksa. Tidak ada pasal atau kutipan hukum yang direkonstruksi.</p></div><div className="source-list">{sources.map(s => <article key={s.id} className="source-row" id={s.id}><div className="source-icon"><Library size={24} strokeWidth={1.4} /></div><div><div className="article-meta"><span>{s.kind}</span></div><h2>{s.title}</h2><SourceReference source={s}/>{s.knowledgeCitations.length>0&&<details><summary>Materi terkait ({s.knowledgeCitations.length})</summary><ul>{s.knowledgeCitations.map(c=><li key={c.id}><Link href={knowledgeHref(c.entity)}>{c.entity.title}</Link> · {c.locator} · {c.verified?"pemetaan ditinjau":"pemetaan belum ditinjau"}</li>)}</ul></details>}<dl className="source-details"><div><dt>Versi</dt><dd>{s.version}</dd></div><div><dt>Yurisdiksi</dt><dd>{s.jurisdiction}</dd></div><div><dt>Bagian relevan</dt><dd>Belum dipetakan ke naskah sumber.</dd></div></dl><p className="source-note">{s.note}</p></div><a href={s.url} target="_blank" rel="noreferrer" aria-label={`Buka portal sumber ${s.title}`} className="icon-button"><ArrowUpRight size={21} /></a></article>)}</div><section className="surface soft"><h2>Bagaimana materi disajikan?</h2><p>Artikel menggunakan parafrase editorial singkat. Kerangka etik Indonesia, peraturan perundang-undangan, dan kode etik luar negeri ditampilkan dengan status yang berbeda. Interpretasi hukum serta penggunaan kurikuler memerlukan peninjauan pengajar dan sumber primer yang berlaku.</p></section></>;
+}
