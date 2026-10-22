@@ -1,0 +1,7 @@
+import type {Question} from "./scoring";
+// Educational draft explanations. Applied only when creating a new immutable attempt snapshot.
+const optionExplanations:Record<string,Record<string,string>>={
+ informasi:{consent:"Tujuan dan lingkup persetujuan menentukan informasi yang masih perlu diklarifikasi; persetujuan tidak boleh diasumsikan.",access:"Penerima dan kewenangan akses perlu diketahui untuk menilai penggunaan informasi secara kontekstual.",policy:"Kebijakan institusi dan lingkup peran perlu diperiksa bersama aturan yang berlaku.",popular:"Daya tarik cerita tidak memberikan dasar untuk membagikan informasi pribadi."},
+ "bumd-multiple":{tasks:"Rincian aktivitas dan persyaratan alat diperlukan sebelum menilai kewenangan delegasi.",supervision:"Kompetensi nyata, pengawasan, dan pemeriksaan mutu harus didukung informasi, bukan diasumsikan.",assume:"Gelar S1 saja bukan bukti bahwa seluruh kegiatan profesional boleh dilakukan tanpa syarat.",ignore:"Jumlah peserta tidak menghapus kebutuhan menelaah persetujuan dan prosedur yang berlaku."}
+};
+export function prepareSimulationQuestion(q:Question):Question{return {...q,...(q.type==="multiple"?{multiplePolicy:q.multiplePolicy??"penalty-no-all-v2" as const}:{}),...(optionExplanations[q.id]&&!q.optionExplanations&&q.options.length===Object.keys(optionExplanations[q.id]).length&&q.options.every(o=>Object.hasOwn(optionExplanations[q.id],o.id))?{optionExplanations:optionExplanations[q.id]}:{})};}

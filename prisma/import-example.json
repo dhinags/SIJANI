@@ -1,0 +1,20 @@
+{
+  "sources": [],
+  "entities": [
+    {
+      "id": "draft:contoh-konsep",
+      "slug": "contoh-konsep",
+      "kind": "CONCEPT",
+      "title": "Contoh draf untuk kurasi",
+      "summary": "Templat impor. Ganti dengan materi berizin dan pemetaan sumber yang benar sebelum mengajukan tinjauan.",
+      "keywords": "",
+      "content": {
+        "definition": "",
+        "limitations": "Penjelasan dan sumber belum tersedia; tidak dapat dipublikasikan."
+      },
+      "domainSlugs": ["behaviorisme"],
+      "citations": []
+    }
+  ],
+  "relations": []
+}

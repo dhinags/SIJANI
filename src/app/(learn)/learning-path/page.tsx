@@ -1,0 +1,11 @@
+import Link from "@/components/safe-link";
+import { ArrowRight, Check } from "lucide-react";
+import { currentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { PageHeading } from "@/components/common";
+export default async function LearningPath() {
+  const user = await currentUser();
+  const [read, practice, reflection] = user ? await Promise.all([db.learningProgress.findUnique({ where: { userId_articleSlug: { userId: user.id, articleSlug: "validitas-pengukuran" } } }), db.simulationAttempt.findFirst({ where: { userId: user.id, status: "SUBMITTED" } }), db.rubricAssessment.findFirst({ where: { userId: user.id } })]) : [null, null, null];
+  const steps = [{ title: "Mulai dengan bukti", text: "Pahami mengapa interpretasi skor memerlukan bukti dan batas penggunaan.", href: "/encyclopedia/validitas-pengukuran", complete: !!read, label: "Konsep · 6 menit" }, { title: "Latih penalaran etik", text: "Pertimbangkan kerahasiaan, persetujuan, dan kewenangan dalam kasus sintetis.", href: "/simulasi/kerahasiaan-dalam-supervisi", complete: !!practice, label: "Kasus · ± 15 menit" }, { title: "Tinjau kualitas alasan", text: "Gunakan sebelas dimensi untuk merefleksikan cara Anda mengambil keputusan.", href: "/analisis", complete: !!reflection, label: "Self-review · sesuai ritme Anda" }];
+  return <><PageHeading eyebrow="LANGKAH KECIL, PEMAHAMAN LEBIH UTUH" title="Learning Path" description="Jalur awal: dari membaca bukti hingga menimbang tanggung jawab profesional." /><section className="path-intro"><span className="status-badge">JALUR PERCONTOHAN</span><h2>Dasar penalaran yang bertanggung jawab</h2><p>Jalur ini adalah usulan urutan belajar, bukan kurikulum profesi yang telah disahkan.</p><progress value={steps.filter(s => s.complete).length} max={3} aria-label="Langkah learning path selesai" /><span>{steps.filter(s => s.complete).length} dari 3 langkah tercatat</span></section><div className="path-list">{steps.map((s, i) => <Link href={s.href} key={s.href} className="path-step"><span className={`path-number ${s.complete ? "complete" : ""}`}>{s.complete ? <Check size={22} aria-label="Selesai" /> : `0${i + 1}`}</span><div><span className="eyebrow">{s.label}</span><h2>{s.title}</h2><p>{s.text}</p></div><ArrowRight size={23} /></Link>)}</div></>;
+}
